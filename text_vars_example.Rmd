@@ -1,0 +1,40 @@
+---
+title: "text vars snippet"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r text-vars}
+# text vars fn by dyurovsky
+make_text_vars <- function(df, term_name, term_filter = NULL) {
+  if(!is.null(term_filter)) {
+    filtered_df <- df %>%
+      filter(term == term_filter) 
+  } else{
+    filtered_df <- df
+  }
+    
+  walk(c("estimate", "statistic", "p.value"), 
+      ~assign(glue("{term_name}_{.x}"), 
+              filtered_df %>% pull(!!.x), 
+         envir = globalenv()))
+}
+```
+
+```{r model}
+example_model <- data %>%
+  glmer(response ~ condition1 * condition2 + (1|subid), family = "binomial", data = .) %>%
+  tidy() %>%
+  filter(effect == "fixed") %>%
+  mutate(p.value = printp(p.value))
+
+walk2(c("c1_main_effect", "c2_main_effect", "c1_c2_interaction"), # the names of the vars
+      c("condition1TRUE", "condition2TRUE", "condition1TRUE:condition2TRUE"), 
+      # the names of the effects in the regression table
+      ~ make_text_vars(glmer_unique, .x, .y))
+```
+
+There was a main effect of the first condition manipulation ($\beta =$ `r c1_main_effect_estimate`, $t =$ `r c1_main_effect_statistic`, $p$ `r c1_main_effect_p.value`) and the second condition manipulation ($\beta =$ `r c2_main_effect_estimate` , $t =$ `r c2_main_effect_statistic`, $p$ `r c2_main_effect_p.value`). There was also an interaction between the two ($\beta =$ `r c1_c2_interaction_estimate` , $t =$ `r c1_c2_interaction_statistic`, $p$ `r c1_c2_interaction_p.value`).
